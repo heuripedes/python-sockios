@@ -14,6 +14,9 @@
 #include <sys/socket.h>
 #include <sys/ioctl.h>
 #include <net/if.h>
+#include <ifaddrs.h>
+#include <arpa/inet.h>
+
 //#include <linux/netdevice.h>
 
 //#include <linux/if.h>
@@ -84,15 +87,19 @@ PySockios_IfAddr(const char *ifname, int *family, uint8_t *addr) {
 
 static int
 PySockios_IfAddrStr(const char *ifname, int *family, char *addr) {
-	uint8_t in_addr[4] = {};
+	struct ifreq ifr;
 	int err;
-
-	if ((err = PySockios_IfAddr(ifname, family, in_addr)) == 0) {
-
+	
+	strncpy(ifr.ifr_name, ifname, IF_NAMESIZE);
+	
+	if ((err = ioctl(sockios_fd, SIOCGIFADDR, &ifr)) == 0) {
 		if (addr) {
-			snprintf(addr, 16, "%i.%i.%i.%i",
-				in_addr[0], in_addr[1],
-				in_addr[1], in_addr[2]);
+			// skip port number
+			strcpy(addr, inet_ntoa(((struct sockaddr_in*)&ifr.ifr_addr)->sin_addr));
+		}
+		
+		if (family) {
+			*family = ifr.ifr_addr.sa_family;
 		}
 	}
 	
@@ -215,7 +222,7 @@ static PyObject *
 sockios_get_ifconf(PyObject *self, PyObject *args)
 {
 	const char *ifname;
-	char in_addr[16], hw_addr[18];
+	char in_addr[INET_ADDRSTRLEN+1] = {0}, hw_addr[18] = {0};
 	int flags=0, in_family=0, hw_family=0;
 
 	if (!PyArg_ParseTuple(args, "s", &ifname))
@@ -225,9 +232,8 @@ sockios_get_ifconf(PyObject *self, PyObject *args)
 		return PyErr_SetFromErrno(SockiosError);
 	}
 
-	if (PySockios_IfAddrStr(ifname, &in_family, in_addr) < 0) {
-		return PyErr_SetFromErrno(SockiosError);
-	}
+	// ignore errors.
+	PySockios_IfAddrStr(ifname, &in_family, in_addr);
 
 	if (PySockios_IfHwAddrStr(ifname, &hw_family, hw_addr) < 0) {
 		return PyErr_SetFromErrno(SockiosError);
