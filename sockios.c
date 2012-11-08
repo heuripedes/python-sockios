@@ -219,6 +219,30 @@ sockios_set_up(PyObject *self, PyObject *args)
 }
 
 static PyObject *
+sockios_set_down(PyObject *self, PyObject *args)
+{
+	const char *ifname;
+	int flags;
+
+	if (!PyArg_ParseTuple(args, "s", &ifname))
+		return NULL;
+
+	if (PySockios_IfFlags(ifname, &flags) < 0) {
+		return PyErr_SetFromErrno(SockiosError);
+	}
+
+	if (flags & IFF_UP) {
+		flags ^= IFF_UP;
+
+		if (PySockios_SetIfFlags(ifname, flags) < 0) {
+			return PyErr_SetFromErrno(SockiosError);
+		}
+	}
+
+	return Py_None;
+}
+
+static PyObject *
 sockios_get_ifconf(PyObject *self, PyObject *args)
 {
 	const char *ifname;
@@ -293,7 +317,9 @@ static PyMethodDef SockioMethods[] = {
     {"is_up",  sockios_is_up, METH_VARARGS,
 	    "Returns True if the interface is up."},
     {"set_up",  sockios_set_up, METH_VARARGS,
-	    "Sets IFF_UP on the interface's flag."},
+	    "Activates an interface.."},
+    {"set_down",  sockios_set_down, METH_VARARGS,
+	    "Deactivates an interface."},
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
