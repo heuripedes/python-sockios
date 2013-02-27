@@ -195,6 +195,27 @@ sockios_is_up(PyObject *self, PyObject *args)
 }
 
 static PyObject *
+sockios_is_running(PyObject *self, PyObject *args)
+{
+	const char *ifname;
+	int flags;
+
+	if (!PyArg_ParseTuple(args, "s", &ifname))
+		return NULL;
+
+	if (PySockios_IfFlags(ifname, &flags) < 0) {
+		return PyErr_SetFromErrno(SockiosError);
+	}
+
+	if (flags & IFF_RUNNING) {
+		Py_RETURN_TRUE;
+	} else {
+		Py_RETURN_FALSE;
+	}
+}
+
+
+static PyObject *
 sockios_set_up(PyObject *self, PyObject *args)
 {
 	const char *ifname;
@@ -316,6 +337,8 @@ static PyMethodDef SockioMethods[] = {
 	    "Obtains information about an interface."},
     {"is_up",  sockios_is_up, METH_VARARGS,
 	    "Returns True if the interface is up."},
+    {"is_running",  sockios_is_running, METH_VARARGS,
+	    "Returns True if the interface has the IFF_RUNNING flag."},
     {"set_up",  sockios_set_up, METH_VARARGS,
 	    "Activates an interface.."},
     {"set_down",  sockios_set_down, METH_VARARGS,
